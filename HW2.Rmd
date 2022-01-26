@@ -157,7 +157,21 @@ for (i in 1:10) {
 of arbitrary length and it will return `y`. 
 
 ```{r}
-
+vector_sum <- function(v) {
+  x <- 1:length(v)
+  y <- 0
+  
+  for (i in 1:length(v)) {
+    y[i] = sum(x[1:i])
+    if (y[i] <= 10) {
+      print(y) 
+    }
+  }
+  
+  return(y)
+}
+vector_sum(1:20)
+    
 ```
 
 
