@@ -1,0 +1,142 @@
+Examine the following for loop, and then complete the exercises
+
+```{r}
+data(iris)
+head(iris)
+
+# get every unique species id
+sp_ids <- unique(iris$Species)
+
+# initialize a matrix called output with no data. It should have the same
+# number of rows as there are unique species. The number of columns should
+# be one less than the number of columns in the iris dataframe.
+output <- matrix(0, nrow=length(sp_ids), ncol=ncol(iris)-1)
+rownames(output) <- sp_ids
+colnames(output) <- names(iris[ , -ncol(iris)])
+
+# for each species id...
+for(i in seq_along(sp_ids)) {
+    # create a subset of iris (subset refers to the rows and select refers to the columns)
+    iris_sp <- subset(iris, subset=Species == sp_ids[i], select=-Species)
+    for(j in 1:(ncol(iris_sp))) {
+        x <- 0
+        y <- 0
+        #if the number of rows > 0, then preform the next for loop
+        if (nrow(iris_sp) > 0) {
+          #loop through k (the number of rows of iris_sp)  
+          for(k in 1:nrow(iris_sp)) {
+            #x is getting summed, cumulatively (rename as trait sum)
+            #y is getting counted (rename as number of traits)
+             x <- x + iris_sp[k, j]
+             y <- y + 1
+            }
+          #output is a mean of the iris data set? (rename as trait mean)
+           output[i, j] = x / y 
+        }
+    }
+}
+output
+```
+
+```{r}
+seq_along(sp_ids)
+# sequence along returns a vector (there are three species so it returns 3)
+```
+
+```{r}
+data(iris)
+head(iris)
+```
+```{r}
+sp_ids = unique(iris$Species)
+```
+
+
+##Excercises
+###Iris loops
+
+1. Describe the values stored in the object `output`. In other words what did the 
+loops create?
+## The values stored in output are the mean values of x/y.  x 
+
+
+2. Describe using pseudo-code how `output` was calculated, for example,
+```{r, eval=FALSE}
+Loop from 1 to length of species identities
+   Take a subset of iris data 
+   Loop from 1 to number of columns of the iris data
+      If ... occurs then do ...  
+```
+## For(loop) each species ID (from 1 to length of species ID)
+      create a subset of iris
+      For (loop) the number of columns (starting at 0) of iris_sp
+           if number of rows iris_sp is greater than 0
+               then loop through the number of rows of iris_sp
+                   sum all the values of x in each row
+                   count the number of traits
+                   output the mean values of each trait
+
+
+3. The variables in the loop were named so as to be vague. How can the objects
+`output`, `x`, and `y` be renamed such that it is clearer what is occurring in
+the loop.
+# x can be renamed as trait sum
+# y can be renamed as number of traits
+# output can be renamed as trait mean
+
+
+4. It is possible to accomplish the same task using fewer lines of code? Please
+suggest one other way to calculate `output` that decreases the number of loops
+by 1.
+#use a vector to calculate mean
+```{r}
+data(iris)
+head(iris)
+
+# get every unique species id
+sp_ids <- unique(iris$Species)
+
+# initialize a matrix called output with no data. It should have the same
+# number of rows as there are unique species. The number of columns should
+# be one less than the number of columns in the iris dataframe.
+output <- matrix(0, nrow=length(sp_ids), ncol=ncol(iris)-1)
+rownames(output) <- sp_ids
+colnames(output) <- names(iris[ , -ncol(iris)])
+
+# for each species id...
+for(i in seq_along(sp_ids)) {
+    # create a subset of iris (subset refers to the rows and select refers to the columns)
+    iris_sp <- subset(iris, subset=Species == sp_ids[i], select=-Species)
+    for(j in 1:(ncol(iris_sp))) {
+        x <- 0
+        y <- 0
+        #if the number of rows > 0, then preform the next for loop
+        if (nrow(iris_sp) > 0) {
+           output[i, j] = mean(iris_sp[, j]) 
+        }
+    }
+}
+output
+```
+###Sum of a sequence
+
+5. You have a vector `x` with the numbers 1:10. Write a for loop that will
+produce a vector `y` that contains the sum of `x` up to that index of `x`. So
+for example the elements of `x` are 1, 2, 3, and so on and the elements of `y`
+would be 1, 3, 6, and so on.
+```{r}
+x <- 1:10
+
+for (x in 1:10) {
+  y <- sum()
+}
+```
+
+6. Modify your for loop so that if the sum is greater than 10 the value of `y`
+is set to NA
+
+7. Place your for loop into a function that accepts as its argument any vector
+of arbitrary length and it will return `y`. 
+
+
+
