@@ -1,0 +1,212 @@
+---
+title: "univariate_modelingHW.Rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# read in the data file for the hw
+```{r}
+trees <- read.csv('https://raw.githubusercontent.com/dmcglinn/quant_methods/gh-pages/data/treedata_subset.csv')
+```
+
+## Univariate Assignment
+
+Read in tree data
+
+Examine this dataset and see how the data is structured, see function `str` 
+
+The contents of the metadata file ([`./data/tree_metadata.txt`](https://raw.githubusercontent.com/dmcglinn/quant_methods/gh-pages/data/tree_metadata.txt)) is provided here:
+
+
+The dataset includes tree abundances from a subset of a vegetation database of Great Smoky Mountains National Park (TN, NC).
+
+* plotID: unique code for each spatial unit (note some sampled more than once)
+* date: when species occurrence recorded
+* plotsize: size of quadrat in m2
+* spcode: unique 7-letter code for each species
+* species: species name
+* cover: local abundance measured as estimated horizontal cover (ie, relative area of shadow if sun is directly above) classes 1-10 are: 1=trace, 2=0-1%, 3=1-2%, 4=2-5%, 5=5-10%, 6=10-25%, 7=25-50%, 8=50-75%, 9=75-95%, 10=95-100%
+* utme: plot UTM Easting, zone 17 (NAD27 Datum)
+* utmn: plot UTM Northing, zone 17 (NAD27 Datum)
+* elev: elevation in meters from a digital elevation model (10 m res)
+* tci: topographic convergence index, or site "water potential"; measured as the upslope contributing area divided by the tangent of the slope angle (Beven and Kirkby 1979)
+* streamdist: distance of plot from the nearest permanent stream (meters)
+* disturb: plot disturbance history (from a Park report); CORPLOG=corporate logging; SETTLE=concentrated settlement, VIRGIN="high in virgin attributes", LT-SEL=light or selective logging
+* beers: transformed slope aspect ('heat load index'); 0 is SW (hottest), 2 is NE (coolest)
+
+![](../smokies_transects.png) 
+
+Above shows a map of the regional and local location of the elevational transects included in the dataset (from [Fridley 2009](http://plantecology.syr.edu/fridley/Fridley2009_jamc.pdf)).
+
+
+1\. Carry out an exploratory analysis using the tree dataset. Metadata for the
+tree study can be found [here](../data/tree_metadata.txt). Specifically, I would
+like you to develop and compare models for species cover for a habitat
+generalist [*Acer rubrum* (Red
+maple)](http://www.durhamtownship.com/blog-archives/pix/November1407.jpg) and a
+habitat specialist [*Abies fraseri* (Frasier
+fir)](https://upload.wikimedia.org/wikipedia/commons/d/d0/Abies_fraseri_Mitchell.jpg).
+Because this dataset includes both continuous and discrete explanatory variables
+use the function `Anova` in the packages `car` as such
+
+```{r}
+install.packages("car")
+library(car)
+Anova(my_mod, type=3)
+```
+# to run an Anova you need to create a linear model and then run that lm using the name you gave it
+
+```{r}
+main_acer_mod <- lm(cover ~ elev + tci + streamdist + disturb + beers, data = acer)
+main_acer_mod
+```
+
+```{r}
+main_abies_mod <- lm(cover ~ elev + tci + streamdist + disturb + beers, data = abies)
+main_abies_mod
+```
+
+```{r}
+Anova(main_acer_mod, type=3)
+```
+
+````{r}
+Anova(main_abies_mod, type=3)
+```
+
+```{r}
+summary(main_abies_mod)
+```
+
+```{r}
+summary(main_acer_mod)
+```
+
+
+This will estimate partial effect sizes, variance explained, and p-values for 
+each explanatory variable included in the model. 
+
+Compare the p-values you observe using the function `Anova` to those generated
+using `summary`. 
+# The p values in the summary statistic seem to be a rounded up version of the Anova.  The Anova give more sig figs for each value.
+
+
+For each species address the following additional questions:
+
+* how well does the exploratory model appear to explain cover?
+# In Acer... the main predicting variables are disturb, TCI, elevation, and beers.  The model seems to do a good job at explaining that the predicting variables are significant
+# In Abies.. the main predicting variables are streamdist, elevation, and disturbance.  The model again does a good job at showing that those variables are significant in terms of predicting cover.
+* which explanatory variables are the most important?
+# Acer- disturb, TCI, elev, beers
+# Abies- elev, Streamdist, and disturb
+* do model diagnostics indicate any problems with violations of OLS assumptions?
+# the model diagnostics do indicate that the OLS assumption may not be the best distribution to use.  it seems the the data does not hold to the assumption of homoscadisticitiy
+# OLS assumes continuous data, but this set is actually discrete 
+```{r}
+par(mfrow=c(2,2))
+plot(main_acer_mod)
+```
+```{r}
+par(mfrow=c(2,2))
+plot(main_abies_mod)
+```
+
+* are you able to explain variance in one species better than another, 
+  why might this be the case?
+  # variance is best explained in the abies species
+  # as a species specialist, there are a lot of areas where the abundance is 0
+  # this causes the variance displayed
+
+Prior to addressing the above questions you will want to restructure and 
+subset the data using the following R code: 
+
+```{r}  
+# we wish to model species cover across all sampled plots
+# create site x sp matrix for two species 
+sp_cov = with(trees, tapply(cover, list(plotID, spcode), 
+                           function(x) round(mean(x))))
+sp_cov = ifelse(is.na(sp_cov), 0, sp_cov)
+sp_cov = data.frame(plotID = row.names(sp_cov), sp_cov)
+# create environmental matrix
+cols_to_select = c('elev', 'tci', 'streamdist', 'disturb', 'beers')
+env = aggregate(trees[ , cols_to_select], by = list(trees$plotID), 
+                function(x) x[1])
+names(env)[1] = 'plotID'
+# merge species and enviornmental matrices
+site_dat = merge(sp_cov, env, by='plotID')
+# subset species of interest
+abies = site_dat[ , c('ABIEFRA', cols_to_select)]
+acer  = site_dat[ , c('ACERRUB', cols_to_select)]
+names(abies)[1] = 'cover'
+names(acer)[1] = 'cover'
+```
+
+
+
+2\. You may have noticed that the variable cover is defined as 
+positive integers between 1 and 10. and is therefore better treated
+as a discrete rather than continuous variable. 
+Re-examine your solutions to the question above but from the
+perspective of a General Linear Model (GLM) with a Poisson error term
+(rather than a Gaussian one as in OLS). 
+The Poisson distribution generates integers 0 to positive infinity so this may provide a good first approximation. 
+Your new model calls will look as follows:
+
+```{r}
+abies_poi <- glm(cover ~ elev + tci + streamdist + disturb + beers, data = abies, family= 'poisson')
+abies_poi
+```
+
+```{r}
+acer_poi <- glm(cover ~ elev + tci + streamdist + disturb + beers, data = acer, family= 'poisson')
+acer_poi
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(abies_poi)
+```
+
+
+
+For assessing the degree of variation explained you can use a 
+pseudo-R-squared statistic (note this is just one of many possible)
+# The r2 value of abies shows a strong correlation while the r2 value of acer shows a weak correlation
+```r
+pseudo_r2 = function(glm_mod) {
+                1 -  glm_mod$deviance / glm_mod$null.deviance
+            }
+```
+
+```{r}
+pseudo_r2 = function(glm_mod) {
+        1- glm_mod$deviance / glm_mod$null.deviance
+}
+
+pseudo_r2(acer_poi)
+pseudo_r2(abies_poi)
+```
+Compare your qualatitive assessment of which variables were most important in each model. 
+Does it appear that changing the error distribution changed the results much? In what ways? 
+
+# given that the p values of the glm are more significant than the lm values, the poisson models seem to be more sensitive as a test
+# changing the error distribution made the test show an even higher level of significance at multiple predictor variables
+
+```{r}
+Anova(acer_poi, type=3)
+```
+```{r}
+Anova(abies_poi, type=3)
+```
+
+
+
+3\. Provide a plain English summary (i.e., no statistics) of what you have
+found and what conclusions we can take away from your analysis?
+
+#We can take away that covers of different species are affected by different factors. 
+# The Acer species is cover is affected significantly by all factors except the stream distribution, while the Abies species cover is affected significantly by all factores except beers. Those values were taken using the Poisson distribution, as the glm better fits the data set.
+
