@@ -81,4 +81,4 @@ anova(cca_veg, by='margin', permutations = 999)
 these two analyses seem to be suggesting different take home messages? Which
 analysis do you find to be more useful?
 
-#The two analyses do seem to compliment each other.  The cca shows that moisture is linear in its effect, which seems to compliment the indirect ordination.  The indirect ordination shows that moisture is related to site of the plants.  
+#The two analyses do seem to compliment each other.  The cca shows that moisture is linear in its effect, which seems to compliment the indirect ordination.  The indirect ordination shows that moisture is related to site of the plants, and in that way a similarly linear relationship.  
