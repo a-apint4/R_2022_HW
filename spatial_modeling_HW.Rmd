@@ -1,0 +1,203 @@
+---
+title: "spatial_modeling_HW"
+output: html_document
+---
+```{r}
+library(nlme)
+```
+```{r}
+library(vegan)
+data(BCI)
+BCI_xy = data.frame(x = rep(seq(625754, 626654, by=100), each=5), 
+                    y = rep(seq(1011569,  1011969, by=100), len=50))
+```
+
+1) Examine if there is evidence of spatial dependence in a rare and a common species in the BCI tree dataset
+
+#to determine if a species is rare or common, look at how many individuals there are
+```{r}
+abu <- colSums(BCI)
+quantile(abu)
+
+```
+
+```{r}
+plot(density(abu))
+plot(density(log10(abu)))
+
+```
+```{r}
+which(abu > 25 & abu < 27)
+```
+```{r}
+which(abu > 82 & abu < 90 )
+```
+
+```{r}
+rare_sp <- BCI[ ,100]
+common_sp <- BCI[ , 44]
+```
+```{r}
+plot(BCI_xy, cex = rare_sp / max(rare_sp)) # cex specifies scaling
+plot(BCI_xy, cex = common_sp / max(common_sp))
+```
+# the rare species picked was Inga acuminata, the common species was Chrysophyllum argenteum
+
+```{r}
+geodist <- dist(BCI_xy)
+raredist <- dist(rare_sp)
+commdist <- dist(common_sp)
+plot(geodist, raredist, main = "Rare Species")
+lines(lowess(geodist, raredist), lwd = 2, col = "blue")
+plot(geodist, commdist, main = "Common Species")
+lines(lowess(geodist, commdist), lwd = 2, col = "blue")
+
+mantel(geodist, commdist)
+mantel(geodist, raredist)
+```
+#based on the rare and common species I chose, they are not spatially distributed
+
+
+2) Build two generalized linear models to predict the abundance of the species Drypetes standleyi using the abundance of other tree species in the study site. Specifically examine the following species as predictor variables:
+```{r}
+sp_ids = c("Cordia.lasiocalyx", "Hirtella.triandra",
+           "Picramnia.latifolia", "Quassia.amara",
+           "Tabernaemontana.arborea", "Trattinnickia.aspera", 
+           "Xylopia.macrantha")
+```
+
+Note renaming the species ids to something a little easier to work with like “sp_a”, “sp_b” will make model construction a little less cumbersome
+
+Model 1: only include a single species as a predictor variable
+
+```{r}
+sp_a <- BCI$Cordia.lasiocalyx
+sp_b <- BCI$Hirtella.triandra
+sp_c <- BCI$Picramnia.latifolia
+sp_d <- BCI$Quassia.amara
+sp_e <- BCI$Tabernaemontana.arborea
+sp_f <- BCI$Trattinnickia.aspera
+sp_g <- BCI$Xylopia.macrantha
+sp_res <- BCI$Drypetes.standleyi
+
+abu_lm <- gls(sp_res ~ sp_a, data = BCI_xy)
+plot(Variogram(abu_lm, form= ~ x + y))
+```
+# the above appears to be not entirely independent.
+
+
+Model 2: include all of the species as predictor variables
+
+```{r}
+abu_lm2 <- gls(sp_res ~ sp_a + sp_b + sp_c + sp_d + sp_e + sp_f + sp_g, data = BCI_xy)
+plot(Variogram(abu_lm2, form= ~ x + y))
+```
+# the above seems to show that using more species increases the "independence".  This could show that certain species are very dependent, while others are independent,and when using all of them as the predictor variables we wash out the effect
+
+```{r}
+
+max_abu <- max(abu) / 2
+
+res = residuals(abu_lm)
+plot(dist(BCI_xy[, c('x', 'y')]), dist(res))
+lines(lowess(dist(BCI_xy[, c('x', 'y')]), dist(res)), col='red', lwd=2)
+abline(v = max_abu, col='red', lwd=3, lty=2)
+```
+
+```{r}
+
+max_abu <- max(abu) / 2
+
+res = residuals(abu_lm2)
+plot(dist(BCI_xy[, c('x', 'y')]), dist(res))
+lines(lowess(dist(BCI_xy[, c('x', 'y')]), dist(res)), col='red', lwd=2)
+abline(v = max_abu, col='red', lwd=3, lty=2)
+
+```
+# The above residuals shows spatial independence 
+
+With both models examine the spatial dependence of the residuals using the function Variogram. Model the spatial dependence in the residuals using one of the error structures available.
+
+```{r}
+abu_exp <- update(abu_lm, corr=corExp(form=~x + y))
+
+plot(Variogram(abu_exp, maxDist = max_abu))
+
+```
+#the above is for the model using just a singular predictor species 
+# the above error model doesn't look right, this model does not fit this error
+
+```{r}
+plot(Variogram(abu_exp, resType='normalized', maxDist = max_abu))
+
+```
+#the above is for the model using just a singular predictor species 
+#the above error looks much better as a mormalized model
+
+
+```{r}
+abu_exp2 <- update(abu_lm2, corr=corExp(form=~x + y))
+
+plot(Variogram(abu_exp2, maxDist = max_abu))
+```
+# the above is for the glm using all species as predictors 
+
+```{r}
+plot(Variogram(abu_exp2, resType='normalized', maxDist = max_abu))
+```
+# the above is for the glm using all species as predictors 
+#the above fits better than the exponential
+
+```{r}
+abu_rat_nug <- update(abu_lm, corr=corRatio(form=~x + y, nugget=T))
+# examine fit of error model to model residuals
+plot(Variogram(abu_rat_nug, maxDist = max_abu))
+```
+```{r}
+plot(Variogram(abu_rat_nug, resType='n', maxDist = max_abu))
+# this is for the species comparison using one predictor
+```
+```{r}
+abu_rat_nug2 <- update(abu_lm2, corr=corRatio(form=~x + y, nugget=T))
+# examine fit of error model to model residuals
+#this is for the species using all predictor variables
+plot(Variogram(abu_rat_nug2, maxDist = max_abu))
+```
+```{r}
+plot(Variogram(abu_rat_nug2, resType='n', maxDist = max_abu))
+
+```
+
+```{r}
+abu_exp_nug = update(abu_exp, corr=corExp(form=~x + y, nugget=T))
+plot(Variogram(abu_exp, maxDist = max_abu))
+
+```
+# the nugget doesn't have a large enough effect to alter anything
+
+
+Did including the spatial error term have a large impact on the coefficients of the model?
+# I think that adding the error term did not have a large effect on the coefficients of the model
+# the p-values are slightly different, but not by a large factor
+
+```{r}
+summary(abu_exp2)
+```
+
+```{r}
+summary(abu_lm2)
+```
+```{r}
+summary(abu_rat_nug2)
+```
+
+Did including the spatial error terms significantly improve model fit (use function anova to carry out model comparison)?
+# the exponential error model fits better than both the linear model and the rational quadratic (even though the rational quadratic has a nugget)
+
+```{r}
+anova(abu_exp2, abu_lm2, abu_rat_nug2, test = F)
+```
+
+Explain why you did or did not observe a difference in the influence of adding the spatial error term between the two models.
+# there was no difference when adding the nugget between the models.  This likely means that the species are spatially independent and one species does not have a large affect on the abundance of another.
+
